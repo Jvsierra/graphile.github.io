@@ -92,7 +92,10 @@ The `sqlBuilder` has a number of methods which affect the query which will be ge
 
 ```js{7-36}
 const { postgraphile } = require("postgraphile");
-const { makeExtendSchemaPlugin, gql } = require("graphile-utils");
+const {
+  makeExtendSchemaPlugin,
+  gql
+  } = require("graphile-utils");
 const express = require("express");
 
 const app = new express();
@@ -219,7 +222,9 @@ makeExtendSchemaPlugin(build => {
             );
 
             // Success! Write the user to the database.
-            await pgClient.query("RELEASE SAVEPOINT graphql_mutation");
+            await pgClient.query(
+            "RELEASE SAVEPOINT graphql_mutation"
+            );
 
             // We pass the fetched result via the
             // `user` field to match the
@@ -233,7 +238,9 @@ makeExtendSchemaPlugin(build => {
           } catch (e) {
             // Oh noes! If at first you don't succeed,
             // destroy all evidence you ever tried.
-            await pgClient.query("ROLLBACK TO SAVEPOINT graphql_mutation");
+            await pgClient.query(
+            "ROLLBACK TO SAVEPOINT graphql_mutation"
+            );
             throw e;
           }
         },
@@ -314,9 +321,11 @@ function AddHttpBinPlugin(builder, { pgExtendedTypes }) {
   builder.hook(
     "GraphQLObjectType:fields",
     (
-      fields, // Input object - the fields for this GraphQLObjectType
+      fields, // Input object -
+      //the fields for this GraphQLObjectType
       { extend, getTypeByName }, // Build object - handy utils
-      { scope: { isRootQuery } } // Context object - used for filtering
+      { scope: { isRootQuery } } // Context object -
+      used for filtering
     ) => {
       if (!isRootQuery) {
         // This isn't the object we want to modify:
@@ -324,7 +333,8 @@ function AddHttpBinPlugin(builder, { pgExtendedTypes }) {
         return fields;
       }
 
-      // We don't want to introduce a new JSON type as that will clash,
+      // We don't want to introduce a new JSON type
+      //as that will clash,
       // so let's find the JSON type that other fields use:
       const JSONType = getTypeByName("JSON");
 
@@ -332,13 +342,16 @@ function AddHttpBinPlugin(builder, { pgExtendedTypes }) {
         httpBinHeaders: {
           type: JSONType,
           async resolve() {
-            const response = await fetch("https://httpbin.org/headers");
+            const response = await fetch(
+            "https://httpbin.org/headers"
+            );
             if (pgExtendedTypes) {
               // This setting is enabled through postgraphile's
               // `--dynamic-json` option, if enabled return JSON:
               return response.json();
             } else {
-              // If Dynamic JSON is not enabled, we want a JSON string instead
+              // If Dynamic JSON is not enabled,
+              //we want a JSON string instead
               return response.text();
             }
           },
@@ -391,17 +404,22 @@ module.exports = function CreateLinkWrapPlugin(builder) {
       { scope: { isRootMutation, fieldName }, addArgDataGenerator }
     ) => {
       if (!isRootMutation || fieldName !== "createLink") {
-        // If it's not the root mutation, or the mutation isn't the 'createLink'
-        // mutation then we don't want to modify it - so return the input object
-        // unmodified.
+        // If it's not the root mutation,
+        // or the mutation isn't the 'createLink'
+        // mutation then we don't want to modify it -
+        // so return the input object unmodified.
         return field;
       }
 
-      // We're going to need link.id for our `performAnotherTask`; so we're going
-      // to abuse addArgDataGenerator to make sure that this field is ALWAYS
-      // requested, even if the user doesn't specify it. We're careful to alias
-      // the result to a field that begins with `__` as that's forbidden by
-      // GraphQL and thus cannot clash with a user's fields.
+      // We're going to need link.id for our
+      // `performAnotherTask`; so we're going
+      // to abuse addArgDataGenerator to make sure
+      // that this field is ALWAYS
+      // requested, even if the user doesn't specify it.
+      // We're careful to alias
+      //  to a field that begins with `__` 
+      // as that's forbidden by GraphQL and
+      // thus cannot clash with a user's fields.
       addArgDataGenerator(() => ({
         pgQuery: queryBuilder => {
           queryBuilder.select(
@@ -418,7 +436,9 @@ module.exports = function CreateLinkWrapPlugin(builder) {
       const defaultResolver = obj => obj[fieldName];
 
       // Extract the old resolver from `field`
-      const { resolve: oldResolve = defaultResolver, ...rest } = field;
+      const {
+      resolve: oldResolve = defaultResolver,
+      ...rest } = field;
 
       return {
         // Copy over everything except 'resolve'
@@ -426,8 +446,9 @@ module.exports = function CreateLinkWrapPlugin(builder) {
 
         // Add our new resolver which wraps the old resolver
         async resolve(...resolveParams) {
-          // Perform some validation (or any other action you want to do before
-          // calling the old resolver)
+          // Perform some validation
+          // (or any other action you want to do
+          / /before calling the old resolver)
           const RESOLVE_ARGS_INDEX = 1;
           const { input: { link: { title } } } = resolveParams[
             RESOLVE_ARGS_INDEX
@@ -436,13 +457,20 @@ module.exports = function CreateLinkWrapPlugin(builder) {
             throw new Error("Title is too short!");
           }
 
-          // Call the old resolver (you SHOULD NOT modify the arguments it
-          // receives unless you also manipulate the AST it gets passed as the
-          // 4th argument; which is quite a lot of effort) and store the result.
-          const oldResolveResult = await oldResolve(...resolveParams);
+          // Call the old resolver
+          // (you SHOULD NOT modify the arguments it
+          // receives unless you also manipulate
+          //the AST it gets passed as the
+          // 4th argument; which is quite a lot of effort)
+          //and store the result.
+          const oldResolveResult = await oldResolve(
+          ...resolveParams
+          );
 
           // Perform any tasks we want to do after the record is created.
-          await performAnotherTask(oldResolveResult.data.__createdRecordId);
+          await performAnotherTask(
+          oldResolveResult.data.__createdRecordId)
+          ;
 
           // Finally return the result.
           return oldResolveResult;
@@ -482,13 +510,16 @@ const omit = require("lodash/omit");
 
 function removeFieldPluginGenerator(objectName, fieldName) {
   const fn = function(builder) {
-    builder.hook("GraphQLObjectType:fields", (fields, _, { Self }) => {
+    builder.hook(
+    "GraphQLObjectType:fields",
+    (fields, _, { Self }) => {
       if (Self.name !== objectName) return fields;
       return omit(fields, [fieldName]);
     });
   };
   // For debugging:
-  fn.displayName = `RemoveFieldPlugin:${objectName}.${fieldName}`;
+  fn.displayName =
+  `RemoveFieldPlugin:${objectName}.${fieldName}`;
   return fn;
 }
 
